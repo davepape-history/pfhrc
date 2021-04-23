@@ -1,0 +1,60 @@
+#!/bin/csh
+
+# Usage: ProcessHrc infile.hrc outfile.hrc
+
+#  Note: the texture map processing assumes that all textures have the string
+#	"usr" in their file name, *and* that "usr" occurs nowhere else in the
+#	hrc file; this usually works fine, but may need changing if your
+#	Softimage files are not in a directory whose path includes the
+#	string "usr" (such as /nfs/...)
+
+
+# Convert the hrc file to ASCII
+hrcConvert $1 /usr/tmp/tmphrc$$.hrc -a
+
+# Get a list of the texture maps
+awk '/usr/ { gsub("\""," ",$2); print $2 }' /usr/tmp/tmphrc$$.hrc | sort | uniq > /usr/tmp/tmplist.$$
+
+
+set CUTOFF = 133   # percentage; determines whether to scale a texture
+		   # up or down.  If the size is more than $CUTOFF percent
+		   # larger than the next smaller power of 2, it is scaled
+		   # up; if not, it is scaled down.
+
+# Convert the texture maps to SGI format
+foreach pict (`cat /usr/tmp/tmplist.$$`)
+    echo Converting texture $pict
+    set tmpimg = /usr/tmp/tmpimg.$$
+    soft2sgi $pict $tmpimg
+    set tmpimg = $tmpimg.sgi
+# Resize to powers of 2
+    set size = `imgsize $tmpimg`
+    set newx = 1
+    while (($newx < $size[1]) && ($newx < 512))
+	set newx = `expr $newx \* 2`
+    end
+    while (`expr 100 \* $size[1] \* 2 / $newx` < $CUTOFF)
+	set newx = `expr $newx / 2`
+    end
+    set newy = 1
+    while (($newy < $size[2]) && ($newy < 512))
+	set newy = `expr $newy \* 2`
+    end
+    while (`expr 100 \* $size[2] \* 2 / $newy` < $CUTOFF)
+	set newy = `expr $newy / 2`
+    end
+    echo "  New size is $newx x $newy"
+    izooms $tmpimg `basename $pict`.sgi $newx $newy
+    rm $tmpimg
+end
+
+rm /usr/tmp/tmplist.$$
+
+# Strip off the path from the texture file names in the hrc file for
+#  portability; if you don't wish to do this, just replace this line
+#  with "mv /usr/tmp/tmphrc$$.hrc $2"
+awk '/usr/ { n=split($2,file,"/"); print $1,"\"" file[n]; continue;} \
+	{print}' /usr/tmp/tmphrc$$.hrc > $2
+
+rm /usr/tmp/tmphrc$$.hrc
+

@@ -1,0 +1,118 @@
+<html>
+<head>
+<title>
+Softimage in Performer
+</title>
+<link rev="made" href="mailto:pape&#064;evl.uic.edu">
+</head>
+
+<body>
+<h1> Softimage in Performer (pfhrc loader) </h1>
+<h3> by Dave Pape (pape&#064;evl.uic.edu> </h3>
+
+This document describes the Softimage HRC loader that I have been developing
+for Performer.
+The loader reads a Softimage model (.hrc file), and creates a Performer scene
+graph for the model.
+It can be used to import Softimage models into
+<a href="http://www.evl.uic.edu/pape/CAVE/prog/pfCAVE.manual.html">Performer/CAVE</a>
+applications; see my
+<a href="http://www.evl.uic.edu/pape/CAVE/pfByEx/">"Performer by Example"</a>
+for an introduction to using Performer in the CAVE.
+The loader is a standard pfdb DSO library, so it can be used with regular
+Performer applications, such as <i>perfly</i>.
+
+<p>
+The source code for the loader is available for <a href="pfhrc.tar.gz">downloading</a>
+or <a href="source/">browsing</a>.
+Within EVL, the compiled DSOs can be found in ~pape/lib/.
+
+<p>
+The loader has been tested with Performer 2.1, with models created by Softimage 3.0.
+Please report all bugs to <a href="mailto:pape&#064;evl.uic.edu">me</a>.
+
+<h2>Using the loader</h2>
+
+To use the hrc loader, you must first process your models slightly for it to
+be able to read them.  Specifically, the hrc files must be in ASCII,
+rather than the default binary format, and texture map images must be in
+SGI format, rather than Softimage pic format.  hrc files can be translated
+to ASCII using <i>hrcConvert</i>; images can be translated using <i>soft2sgi</i>
+(both of these programs are part of Softimage).  You should also make sure
+that the texture images have dimensions which are powers of 2, or Performer
+may have problems with them.
+
+<p>
+The shell script <a href="ProcessHrc.txt">ProcessHrc</a> will automatically
+perform the necessary conversions, including resizing to powers of 2.  It
+assumes that the commands <i>hrcConvert</i>, <i>soft2sgi</i>, <i>imgsize</i>,
+and <i>izooms</i> are in your path.
+(<i>izooms</i> is a non-standard SGI image tool; if you do not have it, a
+copy is <a href="izooms.gz">here</a>.)
+One important note: Softimage saves the full path for texture files in the
+hrc file; the ProcessHrc script strips off the path and just leaves the base
+file name (without the extension).  To do this, it assumes that all file paths
+include the string "usr" (and that "usr" appears nowhere else in the hrc file);
+this normally works fine with EVL filesystems, but may need to be changed
+for other systems.
+
+<p>
+Once the hrc and texture files have been converted, they're ready to be loaded.
+Assuming your program uses <i>pfdLoadFile()</i> to load models, you just need
+to set the PFLD_LIBRARY_PATH environment variable to tell Performer where to
+find the hrc loader DSO.  For example:
+<pre>
+	setenv PFLD_LIBRARY_PATH ~pape/lib
+	perfly model.hrc
+</pre>
+
+<h2>Limitations</h2>
+
+Softimage has a strange notion of how hierarchical transformations are
+applied, which I haven't worked out yet.
+Therefore, it is best to freeze the transformations in a model
+(via Effect->Freeze) before saving it for Performer.
+Note that freezing can screw up the texture mapping of some parts
+of your model (this is visible in Softimage, not just in Performer);
+if this happens, you should change the polygons which have problems
+to use UV texturing before doing the freeze.  The change can be done
+via Txt_Oper->Info_UV_Coord.
+
+<p>
+The hrc loader does not support all the possible features of Softimage models;
+only those which can be handled by Performer and which I have had time to code.
+In short, it supports polygonal models, materials, and basic 2D textures.
+All unsupported features are ignored (i.e. they shouldn't cause it to
+crash).
+
+<p>
+More specifically, the types of geometry that are supported are:
+<ul>
+<li> polygon meshes
+<li> faces
+<li> linear patches (right now all patches are treated as linear, even if they're
+	actually BSpline or some other type)
+<li> splines (also treated as linear - i.e. a poly-line formed from the control points)
+</ul>
+
+<p>
+The texturing options that are supported are:
+<ul>
+<li> UV, XY, XZ, YZ, SPHERICAL, and CYLINDRICAL methods
+<li> U/V repeats
+<li> U/V swapping
+</ul>
+
+Support for other features will be added as the need arises, assuming
+they are possible in GL/Performer.
+
+<p>
+<hr>
+
+Last modified 5 February 1999.
+<address>
+<a href=/pape/>Dave Pape</a>, <a href=mailto:pape&#064;evl.uic.edu>pape&#064;evl.uic.edu</a>
+</address>
+
+</body>
+</html>
